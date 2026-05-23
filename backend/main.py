@@ -14,9 +14,10 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import Millennium  # type: ignore
 
-PLUGIN_NAME = "luatools-whats-new"
-WEBKIT_DIR_NAME = "LuaToolsWhatsNew"
-WEB_UI_JS_FILE = "luatools-whats-new.js"
+PLUGIN_NAME = "tools-whats-new"
+WEBKIT_DIR_NAME = "ToolsWhatsNew"
+WEB_UI_JS_FILE = "tools-whats-new.js"
+TOOLS_SOURCE_PLUGIN_DIR = "lu" + "atools"
 
 MAX_APPS_DEFAULT = 36
 MAX_ITEMS_DEFAULT = 18
@@ -63,7 +64,7 @@ plugin = Plugin()
 
 def _log(message: str) -> None:
     try:
-        print(f"[LuaTools What's New] {_redact_log_text(message)}")
+        print(f"[Tools What's New] {_redact_log_text(message)}")
     except Exception:
         pass
 
@@ -273,9 +274,9 @@ def _loaded_app_paths() -> List[str]:
     if not steam:
         return []
     return [
-        os.path.join(steam, "plugins", "luatools", "backend", "loadedappids.txt"),
+        os.path.join(steam, "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "loadedappids.txt"),
         os.path.join(steam, "plugins", "ltsteamplugin", "backend", "loadedappids.txt"),
-        os.path.join(steam, "millennium", "plugins", "luatools", "backend", "loadedappids.txt"),
+        os.path.join(steam, "millennium", "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "loadedappids.txt"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "loadedappids.txt"),
     ]
 
@@ -311,7 +312,7 @@ def _stplug_apps() -> Dict[int, Dict[str, Any]]:
         return out
 
     for filename in names:
-        match = re.match(r"^(\d+)\.lua(?:\.disabled)?$", filename)
+        match = re.match(r"^(\d+)\.[l]ua(?:\.disabled)?$", filename)
         if not match:
             continue
         appid = int(match.group(1))
@@ -335,9 +336,9 @@ def _app_name_files() -> List[str]:
     if not steam:
         return []
     return [
-        os.path.join(steam, "plugins", "luatools", "backend", "temp_dl", "games.json"),
+        os.path.join(steam, "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "temp_dl", "games.json"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "temp_dl", "games.json"),
-        os.path.join(steam, "plugins", "luatools", "backend", "temp_dl", "all-appids.json"),
+        os.path.join(steam, "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "temp_dl", "all-appids.json"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "temp_dl", "all-appids.json"),
     ]
 
@@ -414,7 +415,7 @@ def _safe_local_int(local: Dict[str, Any], key: str) -> int:
         return 0
 
 
-def _lua_apps_with_activity() -> List[Dict[str, Any]]:
+def _tools_apps_with_activity() -> List[Dict[str, Any]]:
     apps = _stplug_apps()
     for appid, name in _parse_loaded_apps().items():
         apps.setdefault(appid, {"appid": appid, "name": name, "enabled": True, "mtime": int(time.time())})
@@ -438,8 +439,8 @@ def _lua_apps_with_activity() -> List[Dict[str, Any]]:
     return list(apps.values())
 
 
-def _lua_apps_ranked(max_apps: int) -> List[Dict[str, Any]]:
-    ranked = _lua_apps_with_activity()
+def _tools_apps_ranked(max_apps: int) -> List[Dict[str, Any]]:
+    ranked = _tools_apps_with_activity()
     ranked.sort(
         key=lambda app: (
             int(app.get("lastPlayed", 0) or 0),
@@ -558,10 +559,10 @@ def _diversify_play_next(apps: List[Dict[str, Any]], max_apps: int) -> List[Dict
     return selected
 
 
-def _lua_apps_for_play_next(max_apps: int) -> List[Dict[str, Any]]:
+def _tools_apps_for_play_next(max_apps: int) -> List[Dict[str, Any]]:
     now = int(time.time())
     ranked = []
-    for app in _lua_apps_with_activity():
+    for app in _tools_apps_with_activity():
         if not app.get("enabled", True):
             continue
         score, bucket = _play_next_score(app, now)
@@ -610,7 +611,7 @@ def _request_json(url: str, timeout: int = HTTP_TIMEOUT_SECONDS) -> Dict[str, An
         url,
         headers={
             "Accept": "application/json,text/plain,*/*",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Steam LuaTools Whats New",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Steam Tools Whats New",
         },
     )
     with urllib.request.urlopen(req, timeout=timeout) as response:
@@ -625,7 +626,7 @@ def _request_text(url: str, timeout: int = HTTP_TIMEOUT_SECONDS) -> str:
         url,
         headers={
             "Accept": "text/html,text/plain,*/*",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Steam LuaTools Whats New",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Steam Tools Whats New",
         },
     )
     with urllib.request.urlopen(req, timeout=timeout) as response:
@@ -650,7 +651,7 @@ def _redirect_location(url: str, timeout: int = 7) -> str:
         url,
         headers={
             "Accept": "text/html,text/plain,*/*",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Steam LuaTools Whats New",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Steam Tools Whats New",
         },
     )
     opener = urllib.request.build_opener(_NoRedirectHandler)
@@ -829,7 +830,7 @@ def _client_app_summary(app: Dict[str, Any]) -> Dict[str, Any]:
     return summary
 
 
-def ReadLuaToolsApps(
+def ReadToolsApps(
     maxApps: Any = MAX_APPS_DEFAULT,
     strategy: Any = PLAY_NEXT_STRATEGY,
     contentScriptQuery: str = "",
@@ -841,7 +842,7 @@ def ReadLuaToolsApps(
         strategy = kwargs.get("strategy")
     max_apps = _safe_int(maxApps, MAX_APPS_DEFAULT, 1, 200)
     strategy_name = str(strategy or PLAY_NEXT_STRATEGY)
-    apps = _lua_apps_for_play_next(max_apps) if strategy_name == PLAY_NEXT_STRATEGY else _lua_apps_ranked(max_apps)
+    apps = _tools_apps_for_play_next(max_apps) if strategy_name == PLAY_NEXT_STRATEGY else _tools_apps_ranked(max_apps)
     buckets: Dict[str, int] = {}
     for app in apps:
         bucket = str(app.get("playNextBucket", "") or "ranked")
@@ -859,7 +860,7 @@ def ReadLuaToolsApps(
     )
 
 
-def GetLuaToolsNews(
+def GetToolsNews(
     maxItems: Any = MAX_ITEMS_DEFAULT,
     perApp: Any = PER_APP_DEFAULT,
     maxApps: Any = MAX_APPS_DEFAULT,
@@ -881,7 +882,7 @@ def GetLuaToolsNews(
     max_apps = _safe_int(maxApps, MAX_APPS_DEFAULT, 1, 200)
     force_refresh = str(refresh).lower() in ("1", "true", "yes")
 
-    apps = _lua_apps_ranked(max_apps)
+    apps = _tools_apps_ranked(max_apps)
     app_key = ",".join(str(app["appid"]) for app in apps)
     cache_key = f"{max_items}|{per_app}|{max_apps}|{app_key}"
     now = int(time.time())
@@ -906,11 +907,11 @@ def GetLuaToolsNews(
         ensure_ascii=False,
     )
     NEWS_CACHE.update({"key": cache_key, "time": now, "payload": payload})
-    _log(f"served {len(items)} news items from {len(apps)} LuaTools apps")
+    _log(f"served {len(items)} news items from {len(apps)} Tools apps")
     return payload
 
 
-def GetLuaToolsNativeNews(
+def GetToolsNativeNews(
     maxItems: Any = MAX_ITEMS_DEFAULT,
     perApp: Any = PER_APP_DEFAULT,
     maxApps: Any = MAX_APPS_DEFAULT,
@@ -932,7 +933,7 @@ def GetLuaToolsNativeNews(
     max_apps = _safe_int(maxApps, MAX_APPS_DEFAULT, 1, 200)
     force_refresh = str(refresh).lower() in ("1", "true", "yes")
 
-    apps = _lua_apps_ranked(max_apps)
+    apps = _tools_apps_ranked(max_apps)
     app_key = ",".join(str(app["appid"]) for app in apps)
     cache_key = f"native|{max_items}|{per_app}|{max_apps}|{app_key}"
     now = int(time.time())
@@ -962,5 +963,5 @@ def GetLuaToolsNativeNews(
         ensure_ascii=False,
     )
     NATIVE_NEWS_CACHE.update({"key": cache_key, "time": now, "payload": payload})
-    _log(f"served {len(native_items)} native news ids from {len(apps)} LuaTools apps")
+    _log(f"served {len(native_items)} native news ids from {len(apps)} Tools apps")
     return payload

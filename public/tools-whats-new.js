@@ -1,12 +1,12 @@
 (function () {
   "use strict";
 
-  const PLUGIN_NAME = "luatools-whats-new";
-  const TAG = "[LuaTools What's New]";
-  const WINDOW_MARKER = "__LuaToolsWhatsNewBootstrap_v3_native_whats_new";
-  const CARD_CLASS = "ltwn-card";
-  const FALLBACK_CLASS = "ltwn-fallback-card";
-  const STYLE_ID = "ltwn-style";
+  const PLUGIN_NAME = "tools-whats-new";
+  const TAG = "[Tools What's New]";
+  const WINDOW_MARKER = "__ToolsWhatsNewBootstrap_v3_native_whats_new";
+  const CARD_CLASS = "twn-card";
+  const FALLBACK_CLASS = "twn-fallback-card";
+  const STYLE_ID = "twn-style";
   const MAX_ITEMS = 18;
   const MAX_APPS = 36;
   const PER_APP = 3;
@@ -107,7 +107,7 @@
 
   function captureWebpackRequire() {
     if (STATE.req) return STATE.req;
-    if (window.__LuaToolsWhatsNewWebpackRequire) return (STATE.req = window.__LuaToolsWhatsNewWebpackRequire);
+    if (window.__ToolsWhatsNewWebpackRequire) return (STATE.req = window.__ToolsWhatsNewWebpackRequire);
     if (window.__NativeFeedBridgeWebpackRequire) return (STATE.req = window.__NativeFeedBridgeWebpackRequire);
     if (window.__NativeFeedUnlockerWebpackRequire) return (STATE.req = window.__NativeFeedUnlockerWebpackRequire);
 
@@ -116,7 +116,7 @@
       if (!chunk || !Array.isArray(chunk) || typeof chunk.push !== "function") continue;
       try {
         chunk.push([[Math.floor(Math.random() * 1e9)], {}, (req) => {
-          window.__LuaToolsWhatsNewWebpackRequire = req;
+          window.__ToolsWhatsNewWebpackRequire = req;
           STATE.req = req;
         }]);
         if (STATE.req) {
@@ -200,7 +200,7 @@
 
   function prefetchNativePayload(force) {
     if (STATE.nativePayloadPromise && !force) return STATE.nativePayloadPromise;
-    STATE.nativePayloadPromise = callBackend("GetLuaToolsNativeNews", {
+    STATE.nativePayloadPromise = callBackend("GetToolsNativeNews", {
       maxItems: MAX_ITEMS,
       maxApps: MAX_APPS,
       perApp: PER_APP,
@@ -322,28 +322,28 @@
     try {
       playNextStore.m_cachedPlayNext = { ...current, appids: merged };
       playNextStore.m_bFresh = true;
-      log("merged LuaTools apps into Play Next cache", {
+      log("merged Tools apps into Play Next cache", {
         original: currentAppIDs.length,
-        lua: STATE.playNextAppIDs.length,
+        tools: STATE.playNextAppIDs.length,
         merged: merged.length,
       });
       return true;
     } catch (err) {
-      warn("failed to merge LuaTools apps into Play Next cache", { error: err && err.message ? err.message : String(err) });
+      warn("failed to merge Tools apps into Play Next cache", { error: err && err.message ? err.message : String(err) });
       return false;
     }
   }
 
   function prefetchPlayNextApps(force) {
     if (STATE.playNextAppsPromise && !force) return STATE.playNextAppsPromise;
-    STATE.playNextAppsPromise = callBackend("ReadLuaToolsApps", {
+    STATE.playNextAppsPromise = callBackend("ReadToolsApps", {
       maxApps: PLAY_NEXT_MAX_APPS,
       strategy: PLAY_NEXT_STRATEGY,
     })
       .then(parsePayload)
       .then((payload) => {
         if (!payload || !payload.success || !Array.isArray(payload.apps)) {
-          warn("LuaTools Play Next apps unavailable", payload);
+          warn("Tools Play Next apps unavailable", payload);
           STATE.playNextAppsPromise = null;
           return [];
         }
@@ -359,7 +359,7 @@
         STATE.playNextAppIDs = appIDs;
         const key = playNextAppsKey(appIDs);
         STATE.playNextAppsKey = key;
-        log("LuaTools Play Next app plan loaded", {
+        log("Tools Play Next app plan loaded", {
           strategy: payload.strategy || "unknown",
           apps: appIDs.length,
           buckets: payload.buckets || {},
@@ -371,7 +371,7 @@
         return appIDs;
       })
       .catch((err) => {
-        warn("LuaTools Play Next app plan failed", { error: err && err.message ? err.message : String(err) });
+        warn("Tools Play Next app plan failed", { error: err && err.message ? err.message : String(err) });
         STATE.playNextAppsPromise = null;
         return [];
       });
@@ -425,7 +425,7 @@
           nAppPriority: 0,
           bPossibleTakeOver: false,
           event,
-          __ltwn: true,
+          __twn: true,
         }));
       rows.sort((a, b) => eventTime(b.event) - eventTime(a.event));
       STATE.nativeRowsKey = key;
@@ -444,10 +444,10 @@
     return withTimeout(STATE.nativeRowsPromise, timeout, STATE.nativeRows || []);
   }
 
-  function mergeEventRows(nativeRows, luaRows) {
+  function mergeEventRows(nativeRows, toolsRows) {
     const merged = [];
     const seen = new Set();
-    [...(luaRows || []), ...(nativeRows || [])].forEach((row) => {
+    [...(toolsRows || []), ...(nativeRows || [])].forEach((row) => {
       const event = row && row.event;
       const key = eventKey(event);
       if (!event || !key || seen.has(key)) return;
@@ -477,13 +477,13 @@
     const modules = getNativeModules();
     const partnerStore = modules && modules.partnerStore;
     if (!partnerStore || typeof partnerStore.GetBestEventsForCurrentUser !== "function") return false;
-    if (partnerStore.__LuaToolsWhatsNewOriginalGetBestEventsForCurrentUser) {
+    if (partnerStore.__ToolsWhatsNewOriginalGetBestEventsForCurrentUser) {
       STATE.nativePatchInstalled = true;
       return true;
     }
 
     const original = partnerStore.GetBestEventsForCurrentUser;
-    Object.defineProperty(partnerStore, "__LuaToolsWhatsNewOriginalGetBestEventsForCurrentUser", {
+    Object.defineProperty(partnerStore, "__ToolsWhatsNewOriginalGetBestEventsForCurrentUser", {
       value: original,
       enumerable: false,
       configurable: true,
@@ -492,17 +492,17 @@
 
     partnerStore.GetBestEventsForCurrentUser = async function patchedGetBestEventsForCurrentUser(...args) {
       const originalPromise = Promise.resolve(original.apply(this, args));
-      const luaRowsPromise = loadNativeRows({ timeout: NATIVE_WAIT_MS });
+      const toolsRowsPromise = loadNativeRows({ timeout: NATIVE_WAIT_MS });
       const nativeRows = await originalPromise;
-      const luaRows = await luaRowsPromise.catch((err) => {
+      const toolsRows = await toolsRowsPromise.catch((err) => {
         warn("native rows unavailable during feed merge", { error: err && err.message ? err.message : String(err) });
         return [];
       });
-      const merged = mergeEventRows(nativeRows, luaRows);
-      if (luaRows.length) {
-        log("merged LuaTools events into native Whats New response", {
+      const merged = mergeEventRows(nativeRows, toolsRows);
+      if (toolsRows.length) {
+        log("merged Tools events into native Whats New response", {
           original: nativeRows.length,
-          lua: luaRows.length,
+          tools: toolsRows.length,
           merged: merged.length,
         });
       }
@@ -524,7 +524,7 @@
     const modules = getNativeModules();
     const playNextStore = modules && modules.playNextStore;
     if (!playNextStore || typeof playNextStore.GetSuggestionsToShow !== "function") return false;
-    if (playNextStore.__LuaToolsWhatsNewOriginalGetSuggestionsToShow) {
+    if (playNextStore.__ToolsWhatsNewOriginalGetSuggestionsToShow) {
       STATE.playNextPatchInstalled = true;
       return true;
     }
@@ -533,7 +533,7 @@
     const originalMaybeUpdate = playNextStore.MaybeUpdatePlayNextAsync;
     const originalLoadCache = playNextStore.LoadCacheFromLocalStorage;
 
-    Object.defineProperty(playNextStore, "__LuaToolsWhatsNewOriginalGetSuggestionsToShow", {
+    Object.defineProperty(playNextStore, "__ToolsWhatsNewOriginalGetSuggestionsToShow", {
       value: originalGetSuggestionsToShow,
       enumerable: false,
       configurable: true,
@@ -546,8 +546,8 @@
       return { ...result, apps };
     };
 
-    if (typeof originalMaybeUpdate === "function" && !playNextStore.__LuaToolsWhatsNewOriginalMaybeUpdatePlayNextAsync) {
-      Object.defineProperty(playNextStore, "__LuaToolsWhatsNewOriginalMaybeUpdatePlayNextAsync", {
+    if (typeof originalMaybeUpdate === "function" && !playNextStore.__ToolsWhatsNewOriginalMaybeUpdatePlayNextAsync) {
+      Object.defineProperty(playNextStore, "__ToolsWhatsNewOriginalMaybeUpdatePlayNextAsync", {
         value: originalMaybeUpdate,
         enumerable: false,
         configurable: true,
@@ -560,8 +560,8 @@
       };
     }
 
-    if (typeof originalLoadCache === "function" && !playNextStore.__LuaToolsWhatsNewOriginalLoadCacheFromLocalStorage) {
-      Object.defineProperty(playNextStore, "__LuaToolsWhatsNewOriginalLoadCacheFromLocalStorage", {
+    if (typeof originalLoadCache === "function" && !playNextStore.__ToolsWhatsNewOriginalLoadCacheFromLocalStorage) {
+      Object.defineProperty(playNextStore, "__ToolsWhatsNewOriginalLoadCacheFromLocalStorage", {
         value: originalLoadCache,
         enumerable: false,
         configurable: true,
@@ -671,8 +671,8 @@
       .${CARD_CLASS} {
         position: relative;
       }
-      .${CARD_CLASS} .ltwn-source-pill,
-      .${FALLBACK_CLASS} .ltwn-source-pill {
+      .${CARD_CLASS} .twn-source-pill,
+      .${FALLBACK_CLASS} .twn-source-pill {
         display: inline-flex;
         align-items: center;
         width: fit-content;
@@ -698,15 +698,15 @@
         flex-direction: column;
         gap: 4px;
       }
-      .${FALLBACK_CLASS}:hover .ltwn-fallback-title {
+      .${FALLBACK_CLASS}:hover .twn-fallback-title {
         color: #ffffff;
       }
-      .ltwn-fallback-date {
+      .twn-fallback-date {
         color: #8b929a;
         font-size: 14px;
         line-height: 18px;
       }
-      .ltwn-fallback-image {
+      .twn-fallback-image {
         width: 100%;
         height: 196px;
         object-fit: cover;
@@ -714,7 +714,7 @@
         border-radius: 4px;
         display: block;
       }
-      .ltwn-fallback-title {
+      .twn-fallback-title {
         color: #dcdedf;
         font-size: 18px;
         line-height: 22px;
@@ -728,7 +728,7 @@
 
   function relativeDate(seconds) {
     const date = Number(seconds || 0);
-    if (!date) return "LuaTools";
+    if (!date) return "Tools";
     const diff = Math.max(0, Math.floor(Date.now() / 1000) - date);
     const minute = 60;
     const hour = 60 * minute;
@@ -760,7 +760,7 @@
 
   function resetClone(card) {
     card.classList.add(CARD_CLASS);
-    card.dataset.ltwn = "1";
+    card.dataset.twn = "1";
     card.removeAttribute("id");
     card.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
     card.querySelectorAll("source").forEach((node) => node.remove());
@@ -795,20 +795,20 @@
     if (!image) return false;
     image.src = isAllowedSteamURL(item.image) ? item.image : "";
     image.removeAttribute("srcset");
-    image.alt = item.title || nativeDisplayName(item.appid, item.appName) || "LuaTools news";
+    image.alt = item.title || nativeDisplayName(item.appid, item.appName) || "Tools news";
     image.style.objectFit = "cover";
     return true;
   }
 
   function addSourcePill(doc, card, item) {
-    let pill = card.querySelector(".ltwn-source-pill");
+    let pill = card.querySelector(".twn-source-pill");
     if (!pill) {
       pill = doc.createElement("div");
-      pill.className = "ltwn-source-pill";
+      pill.className = "twn-source-pill";
       card.appendChild(pill);
     }
     pill.textContent = nativeDisplayName(item.appid, item.appName);
-    pill.title = "LuaTools";
+    pill.title = "Tools";
   }
 
   function createCardFromTemplate(doc, template, item) {
@@ -828,24 +828,24 @@
   function createFallbackCard(doc, item) {
     const card = doc.createElement("div");
     card.className = FALLBACK_CLASS;
-    card.dataset.ltwn = "1";
+    card.dataset.twn = "1";
     card.title = item.title || "";
 
     const date = doc.createElement("div");
-    date.className = "ltwn-fallback-date";
+    date.className = "twn-fallback-date";
     date.textContent = relativeDate(item.date);
 
     const image = doc.createElement("img");
-    image.className = "ltwn-fallback-image";
+    image.className = "twn-fallback-image";
     image.src = isAllowedSteamURL(item.image) ? item.image : "";
-    image.alt = item.title || nativeDisplayName(item.appid, item.appName) || "LuaTools news";
+    image.alt = item.title || nativeDisplayName(item.appid, item.appName) || "Tools news";
 
     const title = doc.createElement("div");
-    title.className = "ltwn-fallback-title";
-    title.textContent = item.title || "LuaTools news";
+    title.className = "twn-fallback-title";
+    title.textContent = item.title || "Tools news";
 
     const pill = doc.createElement("div");
-    pill.className = "ltwn-source-pill";
+    pill.className = "twn-source-pill";
     pill.textContent = nativeDisplayName(item.appid, item.appName);
 
     card.appendChild(date);
@@ -857,7 +857,7 @@
   }
 
   function removeOldCards(list) {
-    Array.from(list.querySelectorAll(`[data-ltwn="1"]`)).forEach((node) => node.remove());
+    Array.from(list.querySelectorAll(`[data-twn="1"]`)).forEach((node) => node.remove());
   }
 
   function listScore(list) {
@@ -892,7 +892,7 @@
 
   function firstNativeTemplate(list) {
     return Array.from(list.children).find((child) => {
-      if (!child || child.dataset.ltwn === "1") return false;
+      if (!child || child.dataset.twn === "1") return false;
       return child.querySelector && child.querySelector("img");
     }) || null;
   }
@@ -927,7 +927,7 @@
     state.lastRun = now;
     state.loading = true;
     try {
-      const raw = await callBackend("GetLuaToolsNews", {
+      const raw = await callBackend("GetToolsNews", {
         maxItems: MAX_ITEMS,
         maxApps: MAX_APPS,
         perApp: PER_APP,
@@ -940,7 +940,7 @@
       }
       const key = `${payload.generatedAt}:${payload.itemCount}:${payload.appCount}`;
       const list = findWhatsNewList(doc);
-      if (!force && state.lastKey === key && list && list.querySelector(`[data-ltwn="1"]`)) {
+      if (!force && state.lastKey === key && list && list.querySelector(`[data-twn="1"]`)) {
         return;
       }
       const rendered = renderItems(doc, payload);
@@ -983,7 +983,7 @@
     state.interval = win.setInterval(() => {
       if (STATE.nativePatchInstalled) return;
       const list = findWhatsNewList(doc);
-      if (list && !list.querySelector(`[data-ltwn="1"]`)) {
+      if (list && !list.querySelector(`[data-twn="1"]`)) {
         scheduleFallback(doc, false);
       }
     }, 15000);
