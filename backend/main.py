@@ -17,7 +17,7 @@ import Millennium  # type: ignore
 PLUGIN_NAME = "tools-whats-new"
 WEBKIT_DIR_NAME = "ToolsWhatsNew"
 WEB_UI_JS_FILE = "tools-whats-new.js"
-TOOLS_SOURCE_PLUGIN_DIR = "lu" + "atools"
+LUATOOLS_PLUGIN_DIR = "luatools"
 
 MAX_APPS_DEFAULT = 36
 MAX_ITEMS_DEFAULT = 18
@@ -274,9 +274,9 @@ def _loaded_app_paths() -> List[str]:
     if not steam:
         return []
     return [
-        os.path.join(steam, "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "loadedappids.txt"),
+        os.path.join(steam, "plugins", LUATOOLS_PLUGIN_DIR, "backend", "loadedappids.txt"),
         os.path.join(steam, "plugins", "ltsteamplugin", "backend", "loadedappids.txt"),
-        os.path.join(steam, "millennium", "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "loadedappids.txt"),
+        os.path.join(steam, "millennium", "plugins", LUATOOLS_PLUGIN_DIR, "backend", "loadedappids.txt"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "loadedappids.txt"),
     ]
 
@@ -312,7 +312,7 @@ def _stplug_apps() -> Dict[int, Dict[str, Any]]:
         return out
 
     for filename in names:
-        match = re.match(r"^(\d+)\.[l]ua(?:\.disabled)?$", filename)
+        match = re.match(r"^(\d+)\.lua(?:\.disabled)?$", filename)
         if not match:
             continue
         appid = int(match.group(1))
@@ -336,9 +336,9 @@ def _app_name_files() -> List[str]:
     if not steam:
         return []
     return [
-        os.path.join(steam, "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "temp_dl", "games.json"),
+        os.path.join(steam, "plugins", LUATOOLS_PLUGIN_DIR, "backend", "temp_dl", "games.json"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "temp_dl", "games.json"),
-        os.path.join(steam, "plugins", TOOLS_SOURCE_PLUGIN_DIR, "backend", "temp_dl", "all-appids.json"),
+        os.path.join(steam, "plugins", LUATOOLS_PLUGIN_DIR, "backend", "temp_dl", "all-appids.json"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "temp_dl", "all-appids.json"),
     ]
 
@@ -907,7 +907,7 @@ def GetToolsNews(
         ensure_ascii=False,
     )
     NEWS_CACHE.update({"key": cache_key, "time": now, "payload": payload})
-    _log(f"served {len(items)} news items from {len(apps)} Tools apps")
+    _log(f"served {len(items)} news items from {len(apps)} LuaTools apps")
     return payload
 
 
@@ -963,5 +963,5 @@ def GetToolsNativeNews(
         ensure_ascii=False,
     )
     NATIVE_NEWS_CACHE.update({"key": cache_key, "time": now, "payload": payload})
-    _log(f"served {len(native_items)} native news ids from {len(apps)} Tools apps")
+    _log(f"served {len(native_items)} native news ids from {len(apps)} LuaTools apps")
     return payload
