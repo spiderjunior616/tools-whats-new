@@ -1,6 +1,6 @@
 # Tools What's New
 
-Millennium plugin que adiciona novidades publicas da Steam de jogos lua no carrossel "What's New" da pagina inicial da biblioteca.
+Plugin Millennium que adiciona noticias de jogos lua e entradas "Jogar a seguir" a pagina inicial da Biblioteca Steam.
 
 Ele le AppIDs dos manifestos locais dos jogos lua, prioriza jogos jogados ou adicionados recentemente para o feed de novidades, busca novidades publicas via `ISteamNews/GetNewsForApp`, resolve os IDs nativos dos eventos da Steam e mistura esses eventos no proprio carregador da pagina inicial da biblioteca.
 
