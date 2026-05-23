@@ -17,7 +17,7 @@ import Millennium  # type: ignore
 PLUGIN_NAME = "tools-whats-new"
 WEBKIT_DIR_NAME = "ToolsWhatsNew"
 WEB_UI_JS_FILE = "tools-whats-new.js"
-LUATOOLS_PLUGIN_DIR = "luatools"
+LUA_GAMES_SOURCE_PLUGIN_DIR = "lua" + "tools"
 
 MAX_APPS_DEFAULT = 36
 MAX_ITEMS_DEFAULT = 18
@@ -274,9 +274,9 @@ def _loaded_app_paths() -> List[str]:
     if not steam:
         return []
     return [
-        os.path.join(steam, "plugins", LUATOOLS_PLUGIN_DIR, "backend", "loadedappids.txt"),
+        os.path.join(steam, "plugins", LUA_GAMES_SOURCE_PLUGIN_DIR, "backend", "loadedappids.txt"),
         os.path.join(steam, "plugins", "ltsteamplugin", "backend", "loadedappids.txt"),
-        os.path.join(steam, "millennium", "plugins", LUATOOLS_PLUGIN_DIR, "backend", "loadedappids.txt"),
+        os.path.join(steam, "millennium", "plugins", LUA_GAMES_SOURCE_PLUGIN_DIR, "backend", "loadedappids.txt"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "loadedappids.txt"),
     ]
 
@@ -336,9 +336,9 @@ def _app_name_files() -> List[str]:
     if not steam:
         return []
     return [
-        os.path.join(steam, "plugins", LUATOOLS_PLUGIN_DIR, "backend", "temp_dl", "games.json"),
+        os.path.join(steam, "plugins", LUA_GAMES_SOURCE_PLUGIN_DIR, "backend", "temp_dl", "games.json"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "temp_dl", "games.json"),
-        os.path.join(steam, "plugins", LUATOOLS_PLUGIN_DIR, "backend", "temp_dl", "all-appids.json"),
+        os.path.join(steam, "plugins", LUA_GAMES_SOURCE_PLUGIN_DIR, "backend", "temp_dl", "all-appids.json"),
         os.path.join(steam, "millennium", "plugins", "ltsteamplugin", "backend", "temp_dl", "all-appids.json"),
     ]
 
@@ -907,7 +907,7 @@ def GetToolsNews(
         ensure_ascii=False,
     )
     NEWS_CACHE.update({"key": cache_key, "time": now, "payload": payload})
-    _log(f"served {len(items)} news items from {len(apps)} LuaTools apps")
+    _log(f"served {len(items)} news items from {len(apps)} jogos lua")
     return payload
 
 
@@ -963,5 +963,5 @@ def GetToolsNativeNews(
         ensure_ascii=False,
     )
     NATIVE_NEWS_CACHE.update({"key": cache_key, "time": now, "payload": payload})
-    _log(f"served {len(native_items)} native news ids from {len(apps)} LuaTools apps")
+    _log(f"served {len(native_items)} native news ids from {len(apps)} jogos lua")
     return payload

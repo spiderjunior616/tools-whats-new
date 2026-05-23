@@ -322,14 +322,14 @@
     try {
       playNextStore.m_cachedPlayNext = { ...current, appids: merged };
       playNextStore.m_bFresh = true;
-      log("merged LuaTools apps into Play Next cache", {
+      log("merged jogos lua into Play Next cache", {
         original: currentAppIDs.length,
         tools: STATE.playNextAppIDs.length,
         merged: merged.length,
       });
       return true;
     } catch (err) {
-      warn("failed to merge LuaTools apps into Play Next cache", { error: err && err.message ? err.message : String(err) });
+      warn("failed to merge jogos lua into Play Next cache", { error: err && err.message ? err.message : String(err) });
       return false;
     }
   }
@@ -343,7 +343,7 @@
       .then(parsePayload)
       .then((payload) => {
         if (!payload || !payload.success || !Array.isArray(payload.apps)) {
-          warn("LuaTools Play Next apps unavailable", payload);
+          warn("jogos lua Play Next plan unavailable", payload);
           STATE.playNextAppsPromise = null;
           return [];
         }
@@ -359,7 +359,7 @@
         STATE.playNextAppIDs = appIDs;
         const key = playNextAppsKey(appIDs);
         STATE.playNextAppsKey = key;
-        log("LuaTools Play Next app plan loaded", {
+        log("jogos lua Play Next plan loaded", {
           strategy: payload.strategy || "unknown",
           apps: appIDs.length,
           buckets: payload.buckets || {},
@@ -371,7 +371,7 @@
         return appIDs;
       })
       .catch((err) => {
-        warn("LuaTools Play Next app plan failed", { error: err && err.message ? err.message : String(err) });
+        warn("jogos lua Play Next plan failed", { error: err && err.message ? err.message : String(err) });
         STATE.playNextAppsPromise = null;
         return [];
       });
@@ -500,7 +500,7 @@
       });
       const merged = mergeEventRows(nativeRows, toolsRows);
       if (toolsRows.length) {
-        log("merged LuaTools events into native Whats New response", {
+        log("merged jogos lua events into native Whats New response", {
           original: nativeRows.length,
           tools: toolsRows.length,
           merged: merged.length,
