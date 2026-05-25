@@ -13,6 +13,7 @@
   const PLAY_NEXT_MAX_APPS = 24;
   const PLAY_NEXT_STRATEGY = "balanced-play-next-v2";
   const NATIVE_WAIT_MS = 4500;
+  const NATIVE_MERGE_START_DELAY_MS = 5000;
   const POPUP_SCAN_MS = 1000;
   const TWO_WEEKS_SECONDS = 14 * 24 * 60 * 60;
 
@@ -30,6 +31,9 @@
     nativeRowsPromise: null,
     nativeRowsKey: "",
     nativeRows: [],
+    nativePatchInstalledAt: 0,
+    nativePatchDisabled: false,
+    lastNativeBestRows: null,
     playNextPatchInstalled: false,
     playNextPatchAttempts: 0,
     playNextAppsPromise: null,
@@ -68,6 +72,28 @@
       if (data === undefined) console.warn(TAG, message);
       else console.warn(TAG, message, stringify(data));
     } catch (_) {}
+  }
+
+  function isDebugFlagEnabled(key) {
+    try {
+      if (window[key] === true) return true;
+    } catch (_) {}
+    for (const storageName of ["localStorage", "sessionStorage"]) {
+      try {
+        const storage = window[storageName];
+        const value = storage && storage.getItem(key);
+        if (value === "1" || value === "true" || value === "yes") return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  function isNativeBestEventsPatchDisabled() {
+    return (
+      isDebugFlagEnabled("tools-whats-new:disable-native-best-events-patch") ||
+      isDebugFlagEnabled("twn:disable-native-best-events-patch") ||
+      isDebugFlagEnabled("__ToolsWhatsNewDisableNativeBestEventsPatch")
+    );
   }
 
   function parsePayload(raw) {
@@ -231,9 +257,7 @@
 
   function eventKey(event) {
     if (!event) return "";
-    const clan = event.clanSteamID && typeof event.clanSteamID.GetAccountID === "function"
-      ? event.clanSteamID.GetAccountID()
-      : String(event.clanSteamID || "");
+    const clan = eventOwnerKey(event);
     return `${event.GID || ""}:${event.AnnouncementGID || ""}:${clan}`;
   }
 
@@ -241,6 +265,49 @@
     return Number(
       (event && (event.startTime || event.postTime || event.visibilityStartTime || event.rtime32_last_modified)) || 0,
     );
+  }
+
+  function eventOwnerKey(event) {
+    if (!event) return "";
+    const direct =
+      event.steamid ||
+      event.steamID ||
+      event.ownerSteamID ||
+      event.owner_steamid ||
+      event.clanSteamID ||
+      event.clan_steamid;
+    try {
+      if (direct && typeof direct.ConvertTo64BitString === "function") return direct.ConvertTo64BitString();
+    } catch (_) {}
+    try {
+      if (direct && typeof direct.GetAccountID === "function") return String(direct.GetAccountID());
+    } catch (_) {}
+    if (direct) return String(direct);
+    const account = event.clanAccountID || event.clan_account_id || event.clanid || event.clanID;
+    return account ? String(account) : "";
+  }
+
+  function isUsableNativeEvent(event) {
+    return !!(event && Number(event.appid) > 0 && eventTime(event) > 0 && eventKey(event) && eventOwnerKey(event));
+  }
+
+  function nativeRowTemplate(nativeRows) {
+    return Array.isArray(nativeRows)
+      ? nativeRows.find((row) => row && typeof row === "object" && row.event && typeof row.event === "object")
+      : null;
+  }
+
+  function nativeRowFromTemplate(template, event) {
+    if (!template || !isUsableNativeEvent(event)) return null;
+    const row = Object.assign(Object.create(Object.getPrototypeOf(template) || Object.prototype), template);
+    row.event = event;
+    row.nAppPriority = 0;
+    row.bPossibleTakeOver = false;
+    row.__twn = true;
+    if ("appid" in template) row.appid = Number(event.appid);
+    if ("steamid" in template && !row.steamid) row.steamid = eventOwnerKey(event);
+    if ("clanSteamID" in template && event.clanSteamID) row.clanSteamID = event.clanSteamID;
+    return row.event && isUsableNativeEvent(row.event) ? row : null;
   }
 
   function getAppOverview(appid) {
@@ -378,11 +445,17 @@
     return STATE.playNextAppsPromise;
   }
 
-  async function loadNativeRows(options) {
+  async function loadNativeRows(options, nativeRowsForShape) {
     const timeout = options && options.timeout ? options.timeout : NATIVE_WAIT_MS;
     const modules = getNativeModules();
     const partnerStore = modules && modules.partnerStore;
     if (!partnerStore || typeof partnerStore.LoadBatchPartnerEventsByEventGIDsOrAnnouncementGIDs !== "function") {
+      return [];
+    }
+
+    const template = nativeRowTemplate(nativeRowsForShape);
+    if (!template) {
+      warn("native row template unavailable; skipping jogos lua event merge");
       return [];
     }
 
@@ -420,13 +493,8 @@
 
       const fetchedEvents = Array.from(events || []);
       const rows = fetchedEvents
-        .filter((event) => event && event.appid)
-        .map((event) => ({
-          nAppPriority: 0,
-          bPossibleTakeOver: false,
-          event,
-          __twn: true,
-        }));
+        .map((event) => nativeRowFromTemplate(template, event))
+        .filter(Boolean);
       rows.sort((a, b) => eventTime(b.event) - eventTime(a.event));
       STATE.nativeRowsKey = key;
       STATE.nativeRows = rows;
@@ -450,7 +518,7 @@
     [...(toolsRows || []), ...(nativeRows || [])].forEach((row) => {
       const event = row && row.event;
       const key = eventKey(event);
-      if (!event || !key || seen.has(key)) return;
+      if (!event || !key || seen.has(key) || !isUsableNativeEvent(event)) return;
       seen.add(key);
       merged.push(row);
     });
@@ -458,22 +526,13 @@
     return merged;
   }
 
-  function scheduleNativeRefresh() {
-    const modules = getNativeModules();
-    const libraryStore = modules && modules.libraryStore;
-    try {
-      if (libraryStore && typeof libraryStore.ScheduleUpdateBestEventsForUser === "function") {
-        libraryStore.ScheduleUpdateBestEventsForUser(0);
-      } else if (libraryStore && typeof libraryStore.UpdateBestEventsForCurrentUser === "function") {
-        libraryStore.UpdateBestEventsForCurrentUser();
-      }
-    } catch (err) {
-      warn("failed scheduling native library refresh", { error: err && err.message ? err.message : String(err) });
-    }
-  }
-
   function installNativeBestEventsPatch() {
     if (STATE.nativePatchInstalled) return true;
+    if (isNativeBestEventsPatchDisabled()) {
+      STATE.nativePatchDisabled = true;
+      log("native PartnerEventStore.GetBestEventsForCurrentUser patch disabled by debug flag");
+      return true;
+    }
     const modules = getNativeModules();
     const partnerStore = modules && modules.partnerStore;
     if (!partnerStore || typeof partnerStore.GetBestEventsForCurrentUser !== "function") return false;
@@ -491,13 +550,33 @@
     });
 
     partnerStore.GetBestEventsForCurrentUser = async function patchedGetBestEventsForCurrentUser(...args) {
-      const originalPromise = Promise.resolve(original.apply(this, args));
-      const toolsRowsPromise = loadNativeRows({ timeout: NATIVE_WAIT_MS });
-      const nativeRows = await originalPromise;
-      const toolsRows = await toolsRowsPromise.catch((err) => {
+      let nativeRows = null;
+      try {
+        nativeRows = await Promise.resolve(original.apply(this, args));
+      } catch (err) {
+        warn("native GetBestEventsForCurrentUser failed; returning cached native rows without merge", {
+          error: err && err.message ? err.message : String(err),
+          cachedRows: Array.isArray(STATE.lastNativeBestRows) ? STATE.lastNativeBestRows.length : 0,
+        });
+        return Array.isArray(STATE.lastNativeBestRows) ? STATE.lastNativeBestRows : [];
+      }
+
+      if (!Array.isArray(nativeRows)) return nativeRows;
+      STATE.lastNativeBestRows = nativeRows;
+
+      if (Date.now() - STATE.nativePatchInstalledAt < NATIVE_MERGE_START_DELAY_MS) {
+        return nativeRows;
+      }
+
+      if (!nativeRows.length || !nativeRowTemplate(nativeRows)) {
+        return nativeRows;
+      }
+
+      const toolsRows = await loadNativeRows({ timeout: NATIVE_WAIT_MS }, nativeRows).catch((err) => {
         warn("native rows unavailable during feed merge", { error: err && err.message ? err.message : String(err) });
         return [];
       });
+      if (!toolsRows.length) return nativeRows;
       const merged = mergeEventRows(nativeRows, toolsRows);
       if (toolsRows.length) {
         log("merged jogos lua events into native Whats New response", {
@@ -510,12 +589,9 @@
     };
 
     STATE.nativePatchInstalled = true;
+    STATE.nativePatchInstalledAt = Date.now();
     log("patched native PartnerEventStore.GetBestEventsForCurrentUser");
-    prefetchNativePayload(false).then(() => {
-      loadNativeRows({ timeout: NATIVE_WAIT_MS }).then((rows) => {
-        if (rows && rows.length) scheduleNativeRefresh();
-      });
-    });
+    prefetchNativePayload(false);
     return true;
   }
 
@@ -541,9 +617,16 @@
     });
 
     playNextStore.GetSuggestionsToShow = function patchedGetSuggestionsToShow(includeRecent) {
-      const result = originalGetSuggestionsToShow.call(this, includeRecent) || {};
-      const apps = mergePlayNextAppIDs(result.apps || [], !!includeRecent);
-      return { ...result, apps };
+      try {
+        const result = originalGetSuggestionsToShow.call(this, includeRecent) || {};
+        const apps = mergePlayNextAppIDs(result.apps || [], !!includeRecent);
+        return { ...result, apps };
+      } catch (err) {
+        warn("native PlayNextStore.GetSuggestionsToShow failed", {
+          error: err && err.message ? err.message : String(err),
+        });
+        return { apps: [] };
+      }
     };
 
     if (typeof originalMaybeUpdate === "function" && !playNextStore.__ToolsWhatsNewOriginalMaybeUpdatePlayNextAsync) {
@@ -554,7 +637,12 @@
         writable: false,
       });
       playNextStore.MaybeUpdatePlayNextAsync = async function patchedMaybeUpdatePlayNextAsync(...args) {
-        const result = await originalMaybeUpdate.apply(this, args);
+        const result = await Promise.resolve(originalMaybeUpdate.apply(this, args)).catch((err) => {
+          warn("native PlayNextStore.MaybeUpdatePlayNextAsync failed", {
+            error: err && err.message ? err.message : String(err),
+          });
+          return null;
+        });
         applyPlayNextCache(this);
         return result;
       };
@@ -568,7 +656,12 @@
         writable: false,
       });
       playNextStore.LoadCacheFromLocalStorage = async function patchedLoadCacheFromLocalStorage(...args) {
-        const result = await originalLoadCache.apply(this, args);
+        const result = await Promise.resolve(originalLoadCache.apply(this, args)).catch((err) => {
+          warn("native PlayNextStore.LoadCacheFromLocalStorage failed", {
+            error: err && err.message ? err.message : String(err),
+          });
+          return null;
+        });
         applyPlayNextCache(this);
         return result;
       };

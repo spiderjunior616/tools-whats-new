@@ -3,7 +3,7 @@
   "name": "tools-whats-new",
   "common_name": "Tools What's New",
   "description": "Plugin Millennium que adiciona not\u00edcias de jogos lua e entradas \"Jogar a seguir\" \u00e0 p\u00e1gina inicial da Biblioteca Steam.",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "useBackend": true,
   "backend": "backend",
   "include": [

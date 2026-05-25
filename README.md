@@ -8,6 +8,10 @@ No "Play Next" nativo da biblioteca, ele usa a estrategia `balanced-play-next-v2
 
 O backend so busca URLs de noticias/imagens da Steam, e o frontend so abre URLs da Steam. Caminhos locais e timestamps de tempo de jogo sao usados internamente para ranking, mas nao sao retornados ao frontend.
 
+## Diagnostico
+
+Para testar a biblioteca sem o patch nativo do carrossel "Novidades", defina `localStorage["tools-whats-new:disable-native-best-events-patch"] = "1"` no SteamUI e reinicie a Steam. O patch de "Jogar a seguir" continua ativo.
+
 ## Exemplos
 
 ![Jogar a seguir com jogos lua](docs/images/play-next-example.png)
